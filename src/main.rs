@@ -163,6 +163,22 @@ impl TabBarApp {
             .expect("Failed to get main_window from builder");
         window.set_application(Some(app));
 
+        // 确保窗口无装饰并支持透明度
+        window.set_decorated(false);
+
+        // 连接 realize 信号以在窗口创建时设置透明度
+        window.connect_realize(|win| {
+            if let Some(surface) = win.surface() {
+                surface.set_opaque_region(None);
+            }
+
+            // 添加 app-paintable CSS 类以支持自定义绘制
+            win.add_css_class("transparent-window");
+
+            // 强制重绘以确保样式应用
+            win.queue_draw();
+        });
+
         // 标签按钮
         let mut tab_buttons = Vec::new();
         for i in 0..9 {
@@ -338,6 +354,9 @@ impl TabBarApp {
         // 首次音量/主题 UI 同步
         app_instance.update_volume_display();
         app_instance.update_theme_display();
+
+        // 首次 tab 样式同步（设置初始 empty 状态）
+        app_instance.update_tab_styles();
 
         app_instance
     }
@@ -806,7 +825,17 @@ impl TabBarApp {
     }
 
     fn show(&self) {
+        // 在显示前确保所有样式已应用
+        self.update_tab_styles();
+        self.update_theme_display();
+
         self.window.present();
+
+        // 在窗口显示后启用透明度支持并强制重绘
+        if let Some(surface) = self.window.surface() {
+            surface.set_opaque_region(None);
+        }
+        self.window.queue_draw();
     }
 }
 
